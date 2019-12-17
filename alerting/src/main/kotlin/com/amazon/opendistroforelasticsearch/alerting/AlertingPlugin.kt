@@ -44,6 +44,7 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.settings.ClusterSettings
 import org.elasticsearch.common.settings.IndexScopedSettings
+import org.elasticsearch.common.settings.SecureString
 import org.elasticsearch.common.settings.Setting
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.settings.SettingsFilter
@@ -64,7 +65,10 @@ import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ExecutorBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.watcher.ResourceWatcherService
+import org.elasticsearch.xpack.core.security.authc.support.UsernamePasswordToken.basicAuthHeaderValue
+import org.elasticsearch.xpack.core.security.authc.support.UsernamePasswordToken.BASIC_AUTH_HEADER
 import java.util.function.Supplier
+import java.util.Collections
 /**
  * Entry point of the OpenDistro for Elasticsearch alerting plugin
  * This class initializes the [RestGetMonitorAction], [RestDeleteMonitorAction], [RestIndexMonitorAction] rest handlers.
@@ -122,7 +126,7 @@ internal class AlertingPlugin : PainlessExtension, ActionPlugin, ScriptPlugin, P
     }
 
     override fun createComponents(
-        client: Client,
+        preClient: Client,
         clusterService: ClusterService,
         threadPool: ThreadPool,
         resourceWatcherService: ResourceWatcherService,
@@ -134,6 +138,21 @@ internal class AlertingPlugin : PainlessExtension, ActionPlugin, ScriptPlugin, P
     ): Collection<Any> {
         // Need to figure out how to use the Elasticsearch DI classes rather than handwiring things here.
         val settings = environment.settings()
+        var client: Client
+
+        val AUTH_BASIC_USERNAME = AlertingSettings.AUTH_BASIC_USERNAME.get(settings)
+        if (AUTH_BASIC_USERNAME != "") {
+            val AUTH_BASIC_PASSWORD = AlertingSettings.AUTH_BASIC_PASSWORD.get(settings)
+            val USERS_PASSWD = SecureString(AUTH_BASIC_PASSWORD.toCharArray())
+            client = preClient.filterWithHeader(
+                    Collections.singletonMap(
+                            BASIC_AUTH_HEADER, basicAuthHeaderValue(AUTH_BASIC_USERNAME, USERS_PASSWD)
+                    )
+            )
+        } else {
+            client = preClient
+        }
+
         alertIndices = AlertIndices(settings, client.admin().indices(), threadPool, clusterService)
         runner = MonitorRunner(settings, client, threadPool, scriptService, xContentRegistry, alertIndices, clusterService)
         scheduledJobIndices = ScheduledJobIndices(client.admin(), clusterService)
@@ -163,7 +182,9 @@ internal class AlertingPlugin : PainlessExtension, ActionPlugin, ScriptPlugin, P
                 AlertingSettings.ALERT_HISTORY_INDEX_MAX_AGE,
                 AlertingSettings.ALERT_HISTORY_MAX_DOCS,
                 AlertingSettings.ALERTING_MAX_MONITORS,
-                AlertingSettings.REQUEST_TIMEOUT)
+                AlertingSettings.REQUEST_TIMEOUT,
+                AlertingSettings.AUTH_BASIC_USERNAME,
+                AlertingSettings.AUTH_BASIC_PASSWORD)
     }
 
     override fun onIndexModule(indexModule: IndexModule) {

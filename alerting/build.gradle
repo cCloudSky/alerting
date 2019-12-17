@@ -54,6 +54,7 @@ configurations.all {
 
 dependencies {
     compileOnly "org.elasticsearch.plugin:elasticsearch-scripting-painless-spi:${versions.elasticsearch}"
+    compile "org.elasticsearch.client:x-pack-transport:${es_version}"
 
     // Elasticsearch Nanny state
     compile "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"

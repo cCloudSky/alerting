@@ -23,7 +23,6 @@ import org.elasticsearch.common.unit.TimeValue
  * settings specific to [AlertingPlugin]. These settings include things like history index max age, request timeout, etc...
  */
 class AlertingSettings {
-
     companion object {
         const val MONITOR_MAX_INPUTS = 1
         const val MONITOR_MAX_TRIGGERS = 10
@@ -77,5 +76,15 @@ class AlertingSettings {
                 "opendistro.alerting.request_timeout",
                 TimeValue.timeValueSeconds(10),
                 Setting.Property.NodeScope, Setting.Property.Dynamic)
+        val AUTH_BASIC_USERNAME = Setting.simpleString(
+                "opendistro.alerting.auth_basic_username",
+                Setting.Property.NodeScope,
+                Setting.Property.Dynamic
+        )
+        val AUTH_BASIC_PASSWORD = Setting.simpleString(
+                "opendistro.alerting.auth_basic_password",
+                Setting.Property.NodeScope,
+                Setting.Property.Dynamic
+        )
     }
 }
